@@ -1,8 +1,9 @@
-# KL bus reliability tracker — architecture
+# KL bus reliability tracker - architecture
 
 ## Stack
+
 - **Ingestion:** Python poller + Airflow
-- **Storage:** Google Cloud Storage (data lake) + BigQuery (data warehouse)
+- **Storage:** Google Cloud Storage + BigQuery
 - **Transformation:** dbt
 - **Provisioning:** Terraform
 - **Dashboard:** Looker Studio
@@ -11,73 +12,49 @@
 
 ```mermaid
 flowchart TD
-    A1["data.gov.my API
-    GTFS static zip
-    rapid-bus-kl + mrtfeeder"]
-    A2["data.gov.my API
-    GTFS realtime
-    vehicle positions every 30s"]
+    A1[GTFS Static API] -->|daily zip download| DAG1
+    A2[GTFS Realtime API] -->|poll every 5 min| DAG2
 
-    subgraph TF["Terraform — infrastructure provisioning"]
-      GCS["Google Cloud Storage
-      raw/ partitioned by date"]
-      BQR["BigQuery
-      dataset: raw"]
-      BQT["BigQuery
-      dataset: transformed"]
-    end
+    DAG1[Airflow DAG 1 - static ingest] -->|CSV files| GCS
+    DAG2[Airflow DAG 2 - realtime ingest] -->|parquet batches| GCS
 
-    subgraph AF["Airflow — orchestration"]
-      DAG1["DAG 1 — static ingest
-      daily @ 4am
-      unzip → upload → load"]
-      DAG2["DAG 2 — realtime ingest
-      every 5 min
-      batch snapshots → GCS → BQ"]
-    end
+    GCS[Google Cloud Storage] -->|external tables| BQR
 
-    subgraph DBT["dbt — transformation"]
-      STG["staging models
-      clean types, filter bad trips"]
-      INT["intermediate models
-      derive headways
-      flag ghost trips"]
-      MRT["mart models
-      pre-aggregated by route + hour"]
-    end
+    BQR[BigQuery raw] --> STG
+    STG[dbt staging] --> INT
+    INT[dbt intermediate] --> MRT
+    MRT[dbt mart] --> BQT
 
-    LS["Looker Studio
-    KL bus reliability tracker
-    Report 1 · Report 2"]
-
-    A1 -->|"zip download"| DAG1
-    A2 -->|"protobuf poll"| DAG2
-    DAG1 -->|"CSV files"| GCS
-    DAG2 -->|"parquet batches"| GCS
-    GCS -->|"external tables"| BQR
-    BQR --> STG
-    STG --> INT
-    INT --> MRT
-    MRT --> BQT
-    BQT -->|"direct connector"| LS
+    BQT[BigQuery transformed] -->|direct connector| LS
+    LS[Looker Studio]
 ```
+
+## Reports
+
+| Report | Metric | Requirement | Data sources | Transform complexity |
+|---|---|---|---|---|
+| 1 - Stop-level punctuality | Avg minutes late at stops by hour | Temporal distribution | realtime positions + stop_times.txt | Hard - spatial + temporal join |
+| 2 - Ghost bus detection | Ghost vs completed trips by route | Categorical distribution | trips.txt + calendar.txt + realtime feed | Simple - presence check on trip_id |
 
 ## Layer descriptions
 
-**Google Cloud Storage** — raw landing zone. Static GTFS files land as CSVs, realtime snapshots land as parquet batched in 5-minute windows. Partitioned by date so historical data is queryable without scanning everything.
+**Google Cloud Storage** - raw landing zone. Static GTFS files land as CSVs, realtime snapshots land as parquet batched in 5-minute windows. Partitioned by date.
 
-**BigQuery raw** — external tables pointing at GCS. No transformation, no data movement — just a queryable layer over the raw files.
+**BigQuery raw** - external tables pointing at GCS. No transformation, no data movement.
 
-**dbt staging** — light cleaning only. Rename columns to snake_case, cast types, filter out the ~2% of `rapid-bus-kl` trips flagged as problematic in the API docs.
+**dbt staging** - rename columns to snake_case, cast types, filter out the ~2% of rapid-bus-kl trips flagged as problematic in the API docs.
 
-**dbt intermediate** — the core logic. Join realtime vehicle positions against `stop_times.txt` to derive observed headways. Left join scheduled trips against observed positions to flag ghost trips.
+**dbt intermediate** - two models:
+- `int_stop_punctuality`: for each vehicle, find the first timestamp within 100m of each stop (from realtime position snapshots joined to stops.txt coordinates), then compare against scheduled arrival in stop_times.txt by trip_id and stop_sequence
+- `int_ghost_trips`: left join scheduled trip_ids (trips.txt filtered by calendar.txt) against trip_ids seen in the realtime feed during each trip's scheduled window
 
-**dbt mart** — pre-aggregated tables optimised for Looker Studio queries. One table per report, partitioned by date and clustered by route.
+**dbt mart** - pre-aggregated tables optimised for Looker Studio, partitioned by date and clustered by route.
 
-**Looker Studio** — connects directly to BigQuery mart tables. Global period filter drives both reports simultaneously.
+**Looker Studio** - connects directly to BigQuery mart tables. Global period filter (today / this week / this month) drives both reports simultaneously.
 
 ## Known limitations
 
-- Realtime historical data only available from poller start date. Prior period uses synthetic data generated from static schedule with injected noise.
-- ~2% of `rapid-bus-kl` trips removed from `stop_times.txt` by the API provider due to data quality issues. These are filtered at the staging layer and noted in dbt model documentation.
-- GTFS realtime feed provides vehicle positions only — trip updates and service alerts are not yet available for this operator.
+- Realtime historical data only available from poller start date. Prior period uses synthetic data generated from the static schedule with injected noise.
+- ~2% of rapid-bus-kl trips removed from stop_times.txt by the API provider due to data quality issues. Filtered at the staging layer.
+- GTFS realtime feed provides vehicle positions only - trip updates and service alerts not yet available for this operator.
+- Stop-level punctuality relies on spatial proximity matching which may introduce noise due to occasional erroneous GPS readings flagged in the API docs.
