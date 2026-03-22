@@ -18,7 +18,7 @@ newgrp docker
 
 ```
 # Pull your project files (or scp them over)
-git clone https://github.com/nicolenair/kl-bus-reliability-tracker && cd kl-bus-reliability-tracker/airflow-dbt/
+git clone https://github.com/nicolenair/kl-bus-reliability-tracker && cd kl-bus-reliability-tracker/airflow-dbt/ && mkdir dbt_project
 echo -e "AIRFLOW_UID=$(id -u)" > .env
 docker build -t us-central1-docker.pkg.dev/kl-bus-reliability-tracker/airflow-dbt/airflow-dbt:latest .
 docker-compose down
