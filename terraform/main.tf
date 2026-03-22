@@ -16,6 +16,7 @@ provider "google" {
 resource "google_storage_bucket" "kl_bus_reliability_tracker_bucket_1" {
   name     = var.gcs_bucket_name
   location = var.location
+  force_destroy = true
 
   lifecycle_rule {
     condition {
@@ -50,7 +51,7 @@ resource "google_compute_address" "static_ip" {
 # The VM
 resource "google_compute_instance" "airflow_vm" {
   name         = "airflow-dbt-vm"
-  machine_type = "e2-standard-2"
+  machine_type = "e2-standard-4"
   zone         = "${var.region}-a"
 
   boot_disk {
