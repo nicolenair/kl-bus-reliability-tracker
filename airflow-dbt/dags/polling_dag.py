@@ -33,7 +33,8 @@ def realtime_poll():
         """
         try:
             # Sample GTFS-R URL from Malaysia's Open API
-            URLS = ['https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-kl'] #,'https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-mrtfeeder'
+            URLS = ['https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-kl',
+                    'https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-mrtfeeder']
             
             vehicle_positions = []
             for URL in URLS:
