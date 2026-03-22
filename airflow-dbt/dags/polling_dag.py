@@ -11,6 +11,9 @@ from requests import get
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 import json
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Define the basic parameters of the DAG, like schedule and start_date
 @dag(
@@ -60,12 +63,12 @@ def realtime_poll():
         """
         
 
-        hook = GCSHook(gcp_conn_id="google_cloud_kl_bus_reliability_tracker")
+        hook = GCSHook(gcp_conn_id=os.getenv("CONN_ID"))
 
         # Or write a string directly (no local file needed)
         timestamp = context["logical_date"]
         hook.upload(
-            bucket_name="terraform-demo-terra-bucket-sn",
+            bucket_name=os.getenv("GC_BUCKET_NAME"),
             object_name=f"realtime_poll_json/{timestamp}.json",
             data="\n".join(json.dumps(r) for r in vehicle_positions_df),              # raw string data
         )

@@ -5,3 +5,4 @@ requests
 apache-airflow-providers-google
 dbt-core
 dbt-bigquery        # swap for your adapter
+python-dotenv

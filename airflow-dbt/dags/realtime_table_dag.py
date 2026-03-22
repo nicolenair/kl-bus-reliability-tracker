@@ -3,14 +3,16 @@ from airflow.sdk import Asset, dag, task
 from pendulum import datetime
 from datetime import timedelta, timezone
 import requests
-import pandas as pd
 from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import MessageToDict
 import pandas as pd
+import os
 from requests import get
 from airflow.providers.google.cloud.hooks.gcs import parse_json_from_gcs, GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from google.cloud.bigquery import LoadJobConfig, SourceFormat
+from dotenv import load_dotenv
+load_dotenv()
 
 import json
 from datetime import datetime
@@ -33,8 +35,8 @@ def realtime_load():
         """
         This task pulls the latest vehicle position files from gcs.
         """
-        conn_id = "google_cloud_kl_bus_reliability_tracker"
-        bucket_name = "terraform-demo-terra-bucket-sn"
+        conn_id = os.getenv("CONN_ID")
+        bucket_name = os.getenv("GC_BUCKET_NAME")
         UTC8 = timezone(timedelta(hours=8))
         try:
             hook = GCSHook(gcp_conn_id=conn_id)
@@ -56,9 +58,9 @@ def realtime_load():
 
     @task
     def write_vehicle_positions_to_bigquery(modified_files: list) -> None:
-        conn_id = "google_cloud_kl_bus_reliability_tracker"
-        bucket_name = "terraform-demo-terra-bucket-sn"
-        project_id = "future-snowfall-484415-m5"
+        conn_id = os.getenv("CONN_ID")
+        bucket_name = os.getenv("GC_BUCKET_NAME")
+        project_id = os.getenv("GC_PROJECT_ID")
 
         hook = BigQueryHook(gcp_conn_id=conn_id)
         client = hook.get_client(project_id=project_id)
@@ -68,10 +70,11 @@ def realtime_load():
             write_disposition="WRITE_APPEND",
             autodetect=True,
         )
-
+        
+        ds = os.getenv("GC_DATASET")
         load_job = client.load_table_from_uri(
             source_uris=[f"gs://{bucket_name}/{filename}" for filename in modified_files],
-            destination="future-snowfall-484415-m5.demo_dataset.test",
+            destination=f"{ds}.rtdump",
             job_config=job_config,
         )
 

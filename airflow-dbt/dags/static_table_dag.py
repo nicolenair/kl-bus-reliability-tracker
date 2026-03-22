@@ -3,6 +3,7 @@ from airflow.sdk import Asset, dag, task
 from pendulum import datetime
 from datetime import timedelta, timezone
 import requests
+import os
 import pandas as pd
 from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import MessageToDict
@@ -14,6 +15,8 @@ from google.cloud.bigquery import LoadJobConfig, SourceFormat
 import requests
 import zipfile
 import io
+from dotenv import load_dotenv
+load_dotenv()
 
 import json
 from datetime import datetime
@@ -42,7 +45,7 @@ def static_load():
         response = requests.get(url)
         zip_file = zipfile.ZipFile(io.BytesIO(response.content))
 
-        hook = GCSHook(gcp_conn_id="google_cloud_kl_bus_reliability_tracker")
+        hook = GCSHook(gcp_conn_id=os.getenv("CONN_ID"))
 
         timestamp = context["logical_date"]
 
@@ -51,7 +54,7 @@ def static_load():
             with zip_file.open(name) as f:
                 object_name = f"daily_routes/{timestamp}_{name}"
                 hook.upload(
-                    bucket_name="terraform-demo-terra-bucket-sn",
+                    bucket_name=os.getenv("GC_BUCKET_NAME"),
                     object_name=object_name,
                     data=pd.read_csv(f).to_csv(),              # raw string data
                 )
@@ -60,9 +63,9 @@ def static_load():
 
     @task
     def load_route_info_to_bigquery(objs) -> None:
-        conn_id = "google_cloud_kl_bus_reliability_tracker"
-        bucket_name = "terraform-demo-terra-bucket-sn"
-        project_id = "future-snowfall-484415-m5"
+        conn_id = os.getenv("CONN_ID")
+        bucket_name = os.getenv("GC_BUCKET_NAME")
+        project_id = os.getenv("GC_PROJECT_ID")
 
         hook = BigQueryHook(gcp_conn_id=conn_id)
         client = hook.get_client(project_id=project_id)
@@ -73,10 +76,11 @@ def static_load():
             autodetect=True,
         )
         
+        ds = os.getenv("GC_DATASET")
         for table_nm in objs:
             load_job = client.load_table_from_uri(
                 source_uris=[f"gs://{bucket_name}/{objs[table_nm]}"],
-                destination=f"future-snowfall-484415-m5.demo_dataset.{table_nm}",
+                destination=f"{ds}.{table_nm}",
                 job_config=job_config,
             )
 
