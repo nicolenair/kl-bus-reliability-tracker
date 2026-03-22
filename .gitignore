@@ -1,4 +1,4 @@
 .venv
 .env
 *.tfvars
-logs/
+airflow-dbt/logs/**
