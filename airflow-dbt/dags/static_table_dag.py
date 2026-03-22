@@ -37,29 +37,26 @@ def static_load():
         """
         This task pulls the latest route info from the GTFS static API.
         """
-        urls = ["https://api.data.gov.my/gtfs-static/prasarana?category=rapid-bus-kl", 
-                "https://api.data.gov.my/gtfs-static/prasarana?category=rapid-bus-mrtfeeder"]
+        url = "https://api.data.gov.my/gtfs-static/prasarana?category=rapid-bus-kl"
+
+        # Download
+        response = requests.get(url)
+        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
+
+        hook = GCSHook(gcp_conn_id=os.getenv("CONN_ID"))
+
+        timestamp = context["logical_date"]
 
         objs = {}
-        for url in urls:
-            # Download
-            response = requests.get(url)
-            zip_file = zipfile.ZipFile(io.BytesIO(response.content))
-
-            hook = GCSHook(gcp_conn_id=os.getenv("CONN_ID"))
-
-            timestamp = context["logical_date"]
-
-            
-            for name in zip_file.namelist():
-                with zip_file.open(name) as f:
-                    object_name = f"daily_routes/{timestamp}_{name}"
-                    hook.upload(
-                        bucket_name=os.getenv("GC_BUCKET_NAME"),
-                        object_name=object_name,
-                        data=pd.read_csv(f).to_csv(),              # raw string data
-                    )
-                    objs[name.replace(".txt", "")] = objs.get(name.replace(".txt", ""), []) + [object_name]
+        for name in zip_file.namelist():
+            with zip_file.open(name) as f:
+                object_name = f"daily_routes/{timestamp}_{name}"
+                hook.upload(
+                    bucket_name=os.getenv("GC_BUCKET_NAME"),
+                    object_name=object_name,
+                    data=pd.read_csv(f).to_csv(),              # raw string data
+                )
+                objs[name.replace(".txt", "")] = object_name
         return objs
 
     @task
@@ -80,7 +77,7 @@ def static_load():
         ds = os.getenv("GC_DATASET")
         for table_nm in objs:
             load_job = client.load_table_from_uri(
-                source_uris=[f"gs://{bucket_name}/{x}" for x in objs[table_nm]],
+                source_uris=[f"gs://{bucket_name}/{objs[table_nm]}"],
                 destination=f"{ds}.{table_nm}",
                 job_config=job_config,
             )
