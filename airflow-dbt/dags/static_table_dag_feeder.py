@@ -27,7 +27,7 @@ from datetime import datetime
     default_args={"owner": "Nicole", "retries": 3},
     tags=["kl-bus-reliability"],
 )
-def static_load():
+def static_load_feeder():
     # Define tasks
     @task(
         # Define an asset outlet for the task. This can be used to schedule downstream DAGs when this task has run.
@@ -89,4 +89,4 @@ def static_load():
 
 
 # Instantiate the DAG
-static_load()
+static_load_feeder()
