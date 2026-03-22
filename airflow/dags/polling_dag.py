@@ -67,7 +67,7 @@ def realtime_poll():
         hook.upload(
             bucket_name="terraform-demo-terra-bucket-sn",
             object_name=f"realtime_poll_json/{timestamp}.json",
-            data=json.dumps(vehicle_positions_df),              # raw string data
+            data="\n".join(json.dumps(r) for r in vehicle_positions_df),              # raw string data
         )
 
     vp = get_vehicle_positions()
