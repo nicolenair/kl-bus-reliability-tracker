@@ -1,0 +1,7 @@
+# Astro Runtime includes the following pre-installed providers packages: https://www.astronomer.io/docs/astro/runtime-image-architecture#provider-packages
+gtfs-realtime-bindings>=2.0.0
+pandas
+requests
+apache-airflow-providers-google
+dbt-core
+dbt-bigquery        # swap for your adapter
