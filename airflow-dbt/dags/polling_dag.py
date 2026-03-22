@@ -35,16 +35,16 @@ def realtime_poll():
         """
         try:
             # Sample GTFS-R URL from Malaysia's Open API
-            # URL = 'https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-kl'
+            URL = 'https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-kl'
             
-            # # Parse the GTFS Realtime feed
-            # feed = gtfs_realtime_pb2.FeedMessage()
-            # response = get(URL)
-            # feed.ParseFromString(response.content)
+            # Parse the GTFS Realtime feed
+            feed = gtfs_realtime_pb2.FeedMessage()
+            response = get(URL)
+            feed.ParseFromString(response.content)
             
-            # # Extract and print vehicle position information
-            # vehicle_positions = [MessageToDict(entity.vehicle) for entity in feed.entity]
-            vehicle_positions = [{'trip': {'tripId': 'TEST', 'routeId': 'TEST'}, 'vehicle': {'id': 'TEST', 'licensePlate': 'TEST'}, 'position': {'speed': 13.0, 'bearing': 274.0, 'latitude': 3.206444, 'longitude': 101.58082}, 'timestamp': '1886017556'}]
+            # Extract and print vehicle position information
+            vehicle_positions = [MessageToDict(entity.vehicle) for entity in feed.entity]
+            # vehicle_positions = [{'trip': {'tripId': 'TEST', 'routeId': 'TEST'}, 'vehicle': {'id': 'TEST', 'licensePlate': 'TEST'}, 'position': {'speed': 13.0, 'bearing': 274.0, 'latitude': 3.206444, 'longitude': 101.58082}, 'timestamp': '1886017556'}]
             print(f'Total vehicles: {len(vehicle_positions)}')
             return vehicle_positions
         except Exception:

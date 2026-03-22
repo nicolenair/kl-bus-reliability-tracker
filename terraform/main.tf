@@ -50,7 +50,7 @@ resource "google_compute_address" "static_ip" {
 # The VM
 resource "google_compute_instance" "airflow_vm" {
   name         = "airflow-dbt-vm"
-  machine_type = "e2-medium"
+  machine_type = "e2-standard-2"
   zone         = "${var.region}-a"
 
   boot_disk {
