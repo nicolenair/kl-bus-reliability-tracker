@@ -15,8 +15,6 @@ from google.cloud.bigquery import LoadJobConfig, SourceFormat
 import requests
 import zipfile
 import io
-from dotenv import load_dotenv
-load_dotenv()
 
 import json
 from datetime import datetime

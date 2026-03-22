@@ -11,8 +11,6 @@ from requests import get
 from airflow.providers.google.cloud.hooks.gcs import parse_json_from_gcs, GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from google.cloud.bigquery import LoadJobConfig, SourceFormat
-from dotenv import load_dotenv
-load_dotenv()
 
 import json
 from datetime import datetime
