@@ -1,0 +1,47 @@
+models:
+  - name: stg_vehicle_positions
+    description: >
+      Staging model for GTFS-RT vehicle position data. This model standardizes column names
+      and data types from the raw vehicle_positions source, providing a clean foundation
+      for downstream transformations.
+    columns:
+      - name: timestamp
+        description: Unix timestamp indicating when this vehicle position record was captured and sent by the feed.
+        data_tests:
+          - not_null
+
+      - name: trip_id
+        description: Unique identifier of the trip the vehicle is currently serving, as defined in the GTFS static feed.
+
+      # - name: trip_start_time
+      #   description: Scheduled start time of the trip in HH:MM:SS format.
+
+      # - name: trip_start_date
+      #   description: Scheduled start date of the trip in YYYYMMDD format.
+
+      - name: route_id
+        description: Unique identifier of the route the vehicle is currently operating on, as defined in the GTFS static feed.
+
+      - name: latitude
+        description: Current latitude of the vehicle in decimal degrees (WGS84).
+        data_tests:
+          - not_null
+
+      - name: longitude
+        description: Current longitude of the vehicle in decimal degrees (WGS84).
+        data_tests:
+          - not_null
+
+      - name: bearing
+        description: Direction the vehicle is facing in degrees clockwise from True North (0–360).
+
+      - name: speed
+        description: Current speed of the vehicle in meters per second.
+
+      - name: vehicle_id
+        description: Unique identifier of the physical vehicle, used to track the same vehicle across multiple trips.
+        data_tests:
+          - not_null
+
+      - name: vehicle_license_plate
+        description: License plate number of the vehicle.

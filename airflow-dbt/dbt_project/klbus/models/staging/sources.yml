@@ -1,0 +1,48 @@
+sources:
+  - name: raw
+    description: Raw bus coordinate data from GTFS API (polled every 30s)
+    database: "{{ env_var('GC_PROJECT_ID') }}"
+    schema: "{{ env_var('GC_DATASET') }}"
+    tables:
+      - name: rtdump
+        description: bus coordinates realtime data dump (in batches every 30 seconds)
+        columns:
+          - name: timestamp
+            description: "Unix timestamp (epoch seconds) indicating when this vehicle position was recorded."
+
+          - name: trip.tripId
+            description: "The unique identifier of the trip the vehicle is currently serving, as defined in the GTFS static feed."
+
+          # - name: trip.startTime
+          #   description: "The scheduled start time of the trip in HH:MM:SS format (e.g. 06:30:00)."
+
+          # - name: trip.startDate
+          #   description: "The scheduled start date of the trip in YYYYMMDD format (e.g. 20240325)."
+
+          - name: trip.routeId
+            description: "The unique identifier of the route the vehicle is currently operating on, as defined in the GTFS static feed."
+
+          - name: position.latitude
+            description: "The current latitude of the vehicle in decimal degrees (WGS84 coordinate system)."
+
+          - name: position.longitude
+            description: "The current longitude of the vehicle in decimal degrees (WGS84 coordinate system)."
+
+          - name: position.bearing
+            description: "The direction the vehicle is facing, in degrees clockwise from True North (0–360)."
+
+          - name: position.speed
+            description: "The current speed of the vehicle in meters per second."
+
+          - name: vehicle.id
+            description: "The unique identifier of the physical vehicle, used to track the same vehicle across multiple trips."
+
+          - name: vehicle.licensePlate
+            description: "The license plate number of the vehicle."
+
+        config:
+          loaded_at_field: timestamp
+    config:
+      freshness:
+        warn_after: {count: 24, period: hour}
+        error_after: {count: 48, period: hour}
