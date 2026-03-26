@@ -10,7 +10,7 @@ import os
 from requests import get
 from airflow.providers.google.cloud.hooks.gcs import parse_json_from_gcs, GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
-from google.cloud.bigquery import LoadJobConfig, SourceFormat
+from google.cloud.bigquery import LoadJobConfig, SourceFormat,  SchemaField, SchemaUpdateOption
 
 import json
 from datetime import datetime
@@ -18,7 +18,7 @@ from datetime import datetime
 # Define the basic parameters of the DAG, like schedule and start_date
 @dag(
     start_date=datetime(2025, 4, 22),
-    schedule=timedelta(minutes=5),
+    schedule=timedelta(days=1),
     doc_md=__doc__,
     default_args={"owner": "Nicole", "retries": 3},
     tags=["kl-bus-reliability"],
@@ -63,12 +63,33 @@ def realtime_load():
         hook = BigQueryHook(gcp_conn_id=conn_id)
         client = hook.get_client(project_id=project_id)
 
+        schema = [
+            SchemaField("timestamp", "INTEGER"),
+            SchemaField("trip", "RECORD", fields=[
+                SchemaField("tripId", "STRING"),
+                SchemaField("startTime", "STRING"),
+                SchemaField("startDate", "STRING"),
+                SchemaField("routeId", "STRING"),
+            ]),
+            SchemaField("position", "RECORD", fields=[
+                SchemaField("latitude", "FLOAT"),
+                SchemaField("longitude", "FLOAT"),
+                SchemaField("bearing", "FLOAT"),
+                SchemaField("speed", "FLOAT"),
+            ]),
+            SchemaField("vehicle", "RECORD", fields=[
+                SchemaField("id", "STRING"),
+                SchemaField("licensePlate", "STRING"),
+            ]),
+        ]
+
         job_config = LoadJobConfig(
             source_format=SourceFormat.NEWLINE_DELIMITED_JSON,
             write_disposition="WRITE_APPEND",
-            autodetect=True,
+            schema=schema,
+            schema_update_options=[SchemaUpdateOption.ALLOW_FIELD_ADDITION],
         )
-        
+
         ds = os.getenv("GC_DATASET")
         load_job = client.load_table_from_uri(
             source_uris=[f"gs://{bucket_name}/{filename}" for filename in modified_files],
