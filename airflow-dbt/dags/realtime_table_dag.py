@@ -40,7 +40,7 @@ def realtime_load():
             hook = GCSHook(gcp_conn_id=conn_id)
             modified_files = hook.list_by_timespan(
                 bucket_name=bucket_name, 
-                timespan_start=context["logical_date"] - timedelta(minutes=5),
+                timespan_start=context["logical_date"] - timedelta(minutes=24*60 + 10),
                 timespan_end=context["logical_date"], 
                 prefix="realtime_poll_json/"
             )
