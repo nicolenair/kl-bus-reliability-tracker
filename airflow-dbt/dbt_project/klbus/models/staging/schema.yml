@@ -45,3 +45,125 @@ models:
 
       - name: vehicle_license_plate
         description: License plate number of the vehicle.
+
+  - name: stg_stops
+    description: Staged bus stop reference data from the primary GTFS feed. Truncate-loaded daily.
+    columns:
+      - name: stop_id
+        description: Unique identifier for the stop.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: stop_code
+        description: Short human-readable code for the stop (e.g. PJ785).
+
+      - name: stop_name
+        description: Full display name of the stop.
+        data_tests:
+          - not_null
+
+      - name: stop_lat
+        description: Latitude of the stop in decimal degrees (WGS84).
+        data_tests:
+          - not_null
+
+      - name: stop_lon
+        description: Longitude of the stop in decimal degrees (WGS84).
+        data_tests:
+          - not_null
+
+  - name: stg_stop_times
+    description: Staged scheduled stop times from the primary GTFS feed. Truncate-loaded daily.
+    columns:
+      - name: trip_id
+        description: The trip this stop time belongs to. Foreign key to trips.
+        data_tests:
+          - not_null
+
+      - name: stop_id
+        description: The stop being visited. Foreign key to stops.
+        data_tests:
+          - not_null
+
+      - name: stop_sequence
+        description: Ordered position of this stop within the trip. Higher values come later in the trip.
+        data_tests:
+          - not_null
+
+      - name: stop_headsign
+        description: Text shown to passengers indicating the direction of travel at this stop, overriding the trip-level headsign.
+
+      - name: arrival_time
+        description: Scheduled arrival time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
+        data_tests:
+          - not_null
+
+      - name: departure_time
+        description: Scheduled departure time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
+        data_tests:
+          - not_null
+
+      - name: shape_dist_traveled
+        description: Distance traveled along the route shape from the first stop to this stop, in kilometers.
+
+  - name: stg_stops_mrtfeeder
+    description: Staged bus stop reference data from the MRT feeder GTFS feed. Truncate-loaded daily.
+    columns:
+      - name: stop_id
+        description: Unique identifier for the stop.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: stop_code
+        description: Short human-readable code for the stop.
+
+      - name: stop_name
+        description: Full display name of the stop.
+        data_tests:
+          - not_null
+
+      - name: stop_lat
+        description: Latitude of the stop in decimal degrees (WGS84).
+        data_tests:
+          - not_null
+
+      - name: stop_lon
+        description: Longitude of the stop in decimal degrees (WGS84).
+        data_tests:
+          - not_null
+
+  - name: stg_stop_times_mrtfeeder
+    description: Staged scheduled stop times from the MRT feeder GTFS feed. Truncate-loaded daily.
+    columns:
+      - name: trip_id
+        description: The trip this stop time belongs to. Foreign key to trips.
+        data_tests:
+          - not_null
+
+      - name: stop_id
+        description: The stop being visited. Foreign key to stops.
+        data_tests:
+          - not_null
+
+      - name: stop_sequence
+        description: Ordered position of this stop within the trip. Higher values come later in the trip.
+        data_tests:
+          - not_null
+
+      - name: stop_headsign
+        description: Text shown to passengers indicating the direction of travel at this stop, overriding the trip-level headsign.
+
+      - name: arrival_time
+        description: Scheduled arrival time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
+        data_tests:
+          - not_null
+
+      - name: departure_time
+        description: Scheduled departure time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
+        data_tests:
+          - not_null
+
+      - name: shape_dist_traveled
+        description: Distance traveled along the route shape from the first stop to this stop, in kilometers.

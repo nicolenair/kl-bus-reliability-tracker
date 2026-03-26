@@ -42,6 +42,69 @@ sources:
 
         config:
           loaded_at_field: timestamp
+
+      - name: stops
+        description: "GTFS static stops data — master list of all bus stops with location info. Truncate-loaded daily."
+        columns:
+          - name: stop_id
+            description: "Unique identifier for the stop."
+          - name: stop_code
+            description: "Short human-readable code for the stop (e.g. PJ785)."
+          - name: stop_name
+            description: "Full display name of the stop."
+          - name: stop_lat
+            description: "Latitude of the stop in decimal degrees (WGS84)."
+          - name: stop_lon
+            description: "Longitude of the stop in decimal degrees (WGS84)."
+
+      - name: stop_times
+        description: "GTFS static stop times — scheduled arrival and departure times for each stop in every trip. Truncate-loaded daily."
+        columns:
+          - name: trip_id
+            description: "The trip this stop time belongs to. Foreign key to trips."
+          - name: arrival_time
+            description: "Scheduled arrival time at the stop in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight."
+          - name: departure_time
+            description: "Scheduled departure time from the stop in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight."
+          - name: stop_id
+            description: "The stop being visited. Foreign key to stops."
+          - name: stop_sequence
+            description: "Ordered position of this stop within the trip. Higher values come later in the trip."
+          - name: stop_headsign
+            description: "Text shown to passengers indicating the direction of travel at this stop, overriding the trip-level headsign."
+          - name: shape_dist_traveled
+            description: "Distance traveled along the route shape from the first stop to this stop, in kilometers."
+      - name: stops_mrtfeeder
+        description: "GTFS static stops data — master list of all bus stops with location info. Truncate-loaded daily."
+        columns:
+          - name: stop_id
+            description: "Unique identifier for the stop."
+          - name: stop_code
+            description: "Short human-readable code for the stop (e.g. PJ785)."
+          - name: stop_name
+            description: "Full display name of the stop."
+          - name: stop_lat
+            description: "Latitude of the stop in decimal degrees (WGS84)."
+          - name: stop_lon
+            description: "Longitude of the stop in decimal degrees (WGS84)."
+
+      - name: stop_times_mrtfeeder
+        description: "GTFS static stop times — scheduled arrival and departure times for each stop in every trip. Truncate-loaded daily."
+        columns:
+          - name: trip_id
+            description: "The trip this stop time belongs to. Foreign key to trips."
+          - name: arrival_time
+            description: "Scheduled arrival time at the stop in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight."
+          - name: departure_time
+            description: "Scheduled departure time from the stop in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight."
+          - name: stop_id
+            description: "The stop being visited. Foreign key to stops."
+          - name: stop_sequence
+            description: "Ordered position of this stop within the trip. Higher values come later in the trip."
+          - name: stop_headsign
+            description: "Text shown to passengers indicating the direction of travel at this stop, overriding the trip-level headsign."
+          - name: shape_dist_traveled
+            description: "Distance traveled along the route shape from the first stop to this stop, in kilometers."
     config:
       freshness:
         warn_after: {count: 24, period: hour}
