@@ -105,6 +105,38 @@ sources:
             description: "Text shown to passengers indicating the direction of travel at this stop, overriding the trip-level headsign."
           - name: shape_dist_traveled
             description: "Distance traveled along the route shape from the first stop to this stop, in kilometers."
+
+      - name: trips_mrtfeeder
+        description: "GTFS static trips data — maps trip IDs to routes, services, and headsigns. Truncate-loaded daily."
+        columns:
+          - name: route_id
+            description: "The route this trip belongs to. Foreign key to routes."
+          - name: service_id
+            description: "Identifies the set of dates this trip runs on. Foreign key to calendar."
+          - name: trip_id
+            description: "Unique identifier for the trip."
+          - name: trip_headsign
+            description: "Text displayed to passengers identifying the trip's destination."
+          - name: direction_id
+            description: "Indicates the direction of travel. 0 = outbound, 1 = inbound."
+          - name: shape_id
+            description: "References the shape used to draw this trip's path on a map."
+
+      - name: trips
+        description: "GTFS static trips data — maps trip IDs to routes, services, and headsigns. Truncate-loaded daily."
+        columns:
+          - name: route_id
+            description: "The route this trip belongs to. Foreign key to routes."
+          - name: service_id
+            description: "Identifies the set of dates this trip runs on. Foreign key to calendar."
+          - name: trip_id
+            description: "Unique identifier for the trip."
+          - name: trip_headsign
+            description: "Text displayed to passengers identifying the trip's destination."
+          - name: direction_id
+            description: "Indicates the direction of travel. 0 = outbound, 1 = inbound."
+          - name: shape_id
+            description: "References the shape used to draw this trip's path on a map."
     config:
       freshness:
         warn_after: {count: 24, period: hour}
