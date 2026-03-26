@@ -23,7 +23,7 @@ from datetime import datetime
     default_args={"owner": "Nicole", "retries": 3},
     tags=["kl-bus-reliability"],
 )
-def realtime_load():
+def realtime_load_daily_table():
     # Define tasks
     @task(
         # Define an asset outlet for the task. This can be used to schedule downstream DAGs when this task has run.
