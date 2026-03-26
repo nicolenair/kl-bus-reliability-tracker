@@ -104,4 +104,4 @@ def realtime_load_daily_table():
 
 
 # Instantiate the DAG
-realtime_load()
+realtime_load_daily_table()
