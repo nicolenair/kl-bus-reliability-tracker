@@ -98,9 +98,16 @@ def realtime_load_daily_table():
         )
 
         return str(load_job.result())  # wait for job to complete
+    
+    @task
+    def run_dbt_models(load_str) -> None:
+        return
+
+
 
     vp = get_vehicle_positions()
-    write_vehicle_positions_to_bigquery(vp)
+    load_str = write_vehicle_positions_to_bigquery(vp)
+    run_dbt_models(load_str)
 
 
 # Instantiate the DAG

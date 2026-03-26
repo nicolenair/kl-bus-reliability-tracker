@@ -13,7 +13,7 @@ with expanded_veh_positions as (
     ON svp.trip_id = stop_times_with_coordinates.trip_id), 
 
 min_distance_table as (
-    select trip_id, stop_id, DATE(position_timestamp) as position_date, 
+    select trip_id, stop_id, DATE(DATETIME(position_timestamp, 'Asia/Kuala_Lumpur')) as position_date, 
     min(ST_DISTANCE(ST_GEOGPOINT(expanded_veh_positions.longitude, expanded_veh_positions.latitude), 
     ST_GEOGPOINT(stop_lon, stop_lat))) as md 
     from expanded_veh_positions 
@@ -21,11 +21,21 @@ min_distance_table as (
     expanded_veh_positions.route_id, 
     expanded_veh_positions.trip_id, 
     expanded_veh_positions.stop_id, 
-    DATE(position_timestamp)
+    DATE(DATETIME(position_timestamp, 'Asia/Kuala_Lumpur'))
     ),
 
 punctuality_1 as (select DATETIME(position_timestamp, 'Asia/Kuala_Lumpur')  as 
-    actual_arrival_time, planned_departure_time, planned_arrival_time,
+    actual_arrival_time, 
+    DATETIME_ADD(
+        DATETIME(CAST(position_date AS STRING)),  -- midnight of the base date
+        INTERVAL (
+            CAST(SPLIT(planned_arrival_time, ':')[OFFSET(0)] AS INT64) * 3600 +
+            CAST(SPLIT(planned_arrival_time, ':')[OFFSET(1)] AS INT64) * 60 +
+            CAST(SPLIT(planned_arrival_time, ':')[OFFSET(2)] AS INT64)
+        ) SECOND
+    )
+    as planned_arrival_time, 
+    planned_departure_time,
     DATE(position_timestamp) as position_date, route_id, expanded_veh_positions.trip_id, 
     expanded_veh_positions.stop_id, stop_sequence, 
     ST_DISTANCE(ST_GEOGPOINT(expanded_veh_positions.longitude, expanded_veh_positions.latitude), 
@@ -35,7 +45,9 @@ punctuality_1 as (select DATETIME(position_timestamp, 'Asia/Kuala_Lumpur')  as
     and min_distance_table.trip_id = expanded_veh_positions.trip_id 
     and min_distance_table.stop_id = expanded_veh_positions.stop_id 
     and ST_DISTANCE(ST_GEOGPOINT(expanded_veh_positions.longitude, expanded_veh_positions.latitude), 
-    ST_GEOGPOINT(stop_lon, stop_lat)) = min_distance_table.md), 
+    ST_GEOGPOINT(stop_lon, stop_lat)) = min_distance_table.md
+    where expanded_veh_positions.stop_sequence <> 1
+    ), 
 
 deduped as (
     select *

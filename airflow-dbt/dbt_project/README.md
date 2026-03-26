@@ -72,3 +72,15 @@ select DATETIME(position_timestamp, 'Asia/Kuala_Lumpur')  as actual_arrival_time
 JOIN min_distance_table on min_distance_table.position_date = DATE(expanded_veh_positions.position_timestamp) and min_distance_table.trip_id = expanded_veh_positions.trip_id and min_distance_table.stop_id = expanded_veh_positions.stop_id and ST_DISTANCE(ST_GEOGPOINT(expanded_veh_positions.longitude, expanded_veh_positions.latitude), ST_GEOGPOINT(stop_lon, stop_lat)) = min_distance_table.md
 where expanded_veh_positions.route_id="T805" and DATE(position_timestamp)=DATE("2026-03-23") and expanded_veh_positions.trip_id="260313020039S15" order by stop_sequence;
 ```
+
+
+# mart queries (draft)
+
+1
+```
+SELECT route_id, avg(datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE)) AS lateness_minutes FROM `kl-bus-reliability-tracker.kl_bus_reliability_tracker_dataset_1.mart_punctuality` group by route_id ORDER BY lateness_minutes LIMIT 1000
+```
+
+2
+```
+```
