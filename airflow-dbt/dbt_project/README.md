@@ -73,6 +73,8 @@ JOIN min_distance_table on min_distance_table.position_date = DATE(expanded_veh_
 where expanded_veh_positions.route_id="T805" and DATE(position_timestamp)=DATE("2026-03-23") and expanded_veh_positions.trip_id="260313020039S15" order by stop_sequence;
 ```
 
+select position_date, planned_arrival_time, actual_arrival_time, min_distance, FORMAT_DATETIME("%I %p", planned_arrival_time) as pat, datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE) as lateness from `kl-bus-reliability-tracker.kl_bus_reliability_tracker_dataset_1.mart_punctuality` where route_id = "U3020" and FORMAT_DATETIME("%I %p", planned_arrival_time) = "12 AM" limit 5000 ;
+
 
 # mart queries (draft)
 
@@ -83,4 +85,5 @@ SELECT route_id, avg(datetime_diff(actual_arrival_time, planned_arrival_time, MI
 
 2
 ```
+select FORMAT_DATETIME("%I %p", planned_arrival_time), AVG(datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE)) from `kl-bus-reliability-tracker.kl_bus_reliability_tracker_dataset_1.mart_punctuality` where route_id = "T805" group by FORMAT_DATETIME("%I %p", planned_arrival_time) limit 5000;
 ```
