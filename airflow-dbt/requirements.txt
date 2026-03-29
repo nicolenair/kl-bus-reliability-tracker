@@ -3,6 +3,7 @@ gtfs-realtime-bindings>=2.0.0
 pandas
 requests
 apache-airflow-providers-google
+apache-airflow-providers-docker
 dbt-core
 dbt-bigquery        # swap for your adapter
 python-dotenv

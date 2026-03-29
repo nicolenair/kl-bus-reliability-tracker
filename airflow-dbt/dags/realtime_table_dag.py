@@ -6,11 +6,14 @@ import requests
 from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import MessageToDict
 import pandas as pd
+from dotenv import dotenv_values
 import os
 from requests import get
 from airflow.providers.google.cloud.hooks.gcs import parse_json_from_gcs, GCSHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from google.cloud.bigquery import LoadJobConfig, SourceFormat,  SchemaField, SchemaUpdateOption
+from airflow.providers.docker.operators.docker import DockerOperator
+from docker.types import Mount
 
 import json
 from datetime import datetime
@@ -33,8 +36,8 @@ def realtime_load_daily_table():
         """
         This task pulls the latest vehicle position files from gcs.
         """
-        conn_id = os.getenv("CONN_ID")
-        bucket_name = os.getenv("GC_BUCKET_NAME")
+        conn_id = os.environ.get("CONN_ID")
+        bucket_name = os.environ.get("GC_BUCKET_NAME")
         UTC8 = timezone(timedelta(hours=8))
         try:
             hook = GCSHook(gcp_conn_id=conn_id)
@@ -56,9 +59,9 @@ def realtime_load_daily_table():
 
     @task
     def write_vehicle_positions_to_bigquery(modified_files: list) -> None:
-        conn_id = os.getenv("CONN_ID")
-        bucket_name = os.getenv("GC_BUCKET_NAME")
-        project_id = os.getenv("GC_PROJECT_ID")
+        conn_id = os.environ.get("CONN_ID")
+        bucket_name = os.environ.get("GC_BUCKET_NAME")
+        project_id = os.environ.get("GCP_PROJECT_ID")
 
         hook = BigQueryHook(gcp_conn_id=conn_id)
         client = hook.get_client(project_id=project_id)
@@ -90,7 +93,7 @@ def realtime_load_daily_table():
             schema_update_options=[SchemaUpdateOption.ALLOW_FIELD_ADDITION],
         )
 
-        ds = os.getenv("GC_DATASET")
+        ds = os.environ.get("GC_DATASET")
         load_job = client.load_table_from_uri(
             source_uris=[f"gs://{bucket_name}/{filename}" for filename in modified_files],
             destination=f"{ds}.rtdump",
@@ -99,15 +102,47 @@ def realtime_load_daily_table():
 
         return str(load_job.result())  # wait for job to complete
     
-    @task
-    def run_dbt_models(load_str) -> None:
-        return
+    env_vars = env_vars = {k: v for k, v in os.environ.items() if '{' not in str(v) and '}' not in str(v)}
+
+    print(env_vars.keys())
+
+    dbt_run = DockerOperator(
+        task_id="dbt_run",
+        image="dbt-custom",
+        command="dbt run --project-dir /dbt_project/klbus --profiles-dir /root/.dbt",
+        docker_url="unix://var/run/docker.sock",
+        network_mode="airflow-dbt_data_pipeline",
+        auto_remove="success",
+        environment=env_vars,  # already handled by env_file below
+        mount_tmp_dir=False,
+        mounts=[
+            Mount(
+                source=os.environ.get("DBT_PROJECT_DIR"),  # replace with your PWD equivalent
+                target="/dbt_project/klbus",
+                type="bind",
+            ),
+            Mount(
+                source=os.environ.get("DBT_PROFILES_DIR"),
+                target="/root/.dbt",
+                type="bind",
+            ),
+            Mount(
+                source=os.environ.get("DBT_KEYFILE_PATH"),
+                target="/kl-bus-reliability-tracker-25984de72887.json",
+                type="bind",
+            ),
+        ],
+    )
+    # disable Jinja templating on the environment field
+    dbt_run.template_fields = tuple(
+        f for f in dbt_run.template_fields if f != "environment"
+    )
 
 
 
     vp = get_vehicle_positions()
     load_str = write_vehicle_positions_to_bigquery(vp)
-    run_dbt_models(load_str)
+    load_str >> dbt_run
 
 
 # Instantiate the DAG

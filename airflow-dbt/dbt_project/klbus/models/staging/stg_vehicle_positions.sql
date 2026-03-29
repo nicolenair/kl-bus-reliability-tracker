@@ -8,8 +8,10 @@ with source as (
 
 renamed as (
     select
-        -- timestamps
+        -- timestamps and datetime
         timestamp_seconds(cast(timestamp as int64)) as position_timestamp,
+        DATE(DATETIME(timestamp_seconds(cast(timestamp as int64)), 'Asia/Kuala_Lumpur')) as position_date, 
+        DATETIME(timestamp_seconds(cast(timestamp as int64)), 'Asia/Kuala_Lumpur')  as actual_arrival_time,
 
         -- trip info
         cast(trip.tripId as string) as trip_id,

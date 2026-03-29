@@ -63,7 +63,7 @@ def static_load_feeder():
     def load_route_info_to_bigquery(objs) -> None:
         conn_id = os.getenv("CONN_ID")
         bucket_name = os.getenv("GC_BUCKET_NAME")
-        project_id = os.getenv("GC_PROJECT_ID")
+        project_id = os.getenv("GCP_PROJECT_ID")
 
         hook = BigQueryHook(gcp_conn_id=conn_id)
         client = hook.get_client(project_id=project_id)
