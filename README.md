@@ -6,6 +6,8 @@ This project tracks punctuality of Rapid KL buses and MRT feeder buses in Kuala 
 
 ![](imgs/dashboard.png)
 
+The reporting dashboard can be found here: https://lookerstudio.google.com/reporting/c4bbf74b-ddae-4187-9ee7-1d25f541bc03
+
 # Architecture
 
 ## Stack
@@ -111,8 +113,6 @@ Intermediate store for raw GTFS Realtime JSON snapshots polled every 30 seconds.
 | Mart | `mart_punctuality` | Final punctuality metrics joining realtime and static schedule data |
 
 ## Reporting Dashboard - Looker Studio
-
-The reporting dashboard can be found here: 
 
 **Looker Studio** connects directly to BigQuery mart tables. Global period filter (today / this week / this month) drives both reports simultaneously.
 
