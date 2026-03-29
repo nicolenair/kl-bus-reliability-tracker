@@ -1,5 +1,11 @@
 # KL Bus reliability tracker
 
+# Overview
+
+This project tracks punctuality of Rapid KL buses and MRT feeder buses in Kuala Lumpur. It ingests GTFS Realtime data every 30 seconds, stores it in Google Cloud Storage, loads it daily into BigQuery, and transforms it with dbt to produce a punctuality mart.
+
+![](imgs/dashboard.png)
+
 # Architecture
 
 ## Stack
