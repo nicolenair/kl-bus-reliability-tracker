@@ -90,6 +90,8 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - /var/run/docker.sock:/var/run/docker.sock 
   user: "${AIRFLOW_UID:-50000}:0"
+  group_add:
+    - "122"  # docker group GID on the host
   depends_on:
     &airflow-common-depends-on
     redis:
