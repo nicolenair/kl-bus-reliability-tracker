@@ -1,64 +1,116 @@
-# KL bus reliability tracker - architecture
+# KL Bus reliability tracker
+
+# Architecture
 
 ## Stack
 
-- **Ingestion:** Python poller + Airflow
-- **Storage:** Google Cloud Storage + BigQuery
+- **Orchestrator:** Airflow
+- **Lakehouse:** Google Cloud Storage
+- **Warehouse** BigQuery
 - **Transformation:** dbt
 - **Provisioning:** Terraform
 - **Dashboard:** Looker Studio
 
-## Data flow
-
+## Pipeline diagram
+ 
 ```mermaid
 flowchart TD
-    A1[GTFS Static API] -->|daily zip download| DAG1
-    A2[GTFS Realtime API] -->|poll every 5 min| DAG2
-
-    DAG1[Airflow DAG 1 - static ingest] -->|CSV files| GCS
-    DAG2[Airflow DAG 2 - realtime ingest] -->|parquet batches| GCS
-
-    GCS[Google Cloud Storage] -->|external tables| BQR
-
-    BQR[BigQuery raw] --> STG
-    STG[dbt staging] --> INT
-    INT[dbt intermediate] --> MRT
-    MRT[dbt mart] --> BQT
-
-    BQT[BigQuery transformed] -->|direct connector| LS
-    LS[Looker Studio]
+  subgraph src["External sources"]
+    A["GTFS Realtime API\nrapid-kl bus + mrtfeeder"]
+    B["Static GTFS zip\nstop_times, stops, trips"]
+  end
+ 
+  subgraph af["Airflow"]
+    D1["Polling DAG\nevery 30 s"]
+    D2["Realtime Load DAG\ndaily"]
+    D3["Static Load DAG\ndaily"]
+  end
+ 
+  GCS[("GCS\nraw JSON snapshots")]
+ 
+  subgraph bq["BigQuery + dbt"]
+    direction TB
+    RAW["raw.rtdump"]
+ 
+    subgraph static_raw["Static raw tables"]
+      SR1["raw.stop_times\nraw.stop_times_mrtfeeder"]
+      SR2["raw.stops\nraw.stops_mrtfeeder"]
+    end
+ 
+    subgraph stg["Staging"]
+      S1["stg_vehicle_positions"]
+      S2["stg_stop_times\nstg_stop_times_mrtfeeder"]
+      S3["stg_stops\nstg_stops_mrtfeeder"]
+    end
+ 
+    subgraph int["Intermediate"]
+      I1["int_stop_times"]
+      I2["int_stops"]
+      I3["int_stop_times_with_coordinates"]
+      I4["int_max_stop_sequence"]
+    end
+ 
+    MART(["mart_punctuality"])
+  end
+ 
+  A --> D1
+  A --> D2
+  B --> D3
+ 
+  D1 --> GCS
+  GCS --> D2
+  D2 --> RAW
+  D3 --> SR1
+  D3 --> SR2
+ 
+  RAW --> S1
+  SR1 --> S2
+  SR2 --> S3
+ 
+  S2 --> I1
+  S3 --> I2
+  I1 --> I3
+  I2 --> I3
+  S1 --> I4
+ 
+  I3 --> MART
+  I4 --> MART
 ```
+ 
+### Airflow DAGs
+ 
+| DAG | Schedule | Description |
+|---|---|---|
+| Polling DAG | Every 30 s | Hits the GTFS Realtime API for rapid-kl bus and mrtfeeder, saves raw JSON to GCS |
+| Realtime Load DAG | Daily | Loads JSON from GCS into `raw.rtdump` in BigQuery, then triggers the dbt run |
+| Static Load DAG | Daily | Downloads the static GTFS zip, unzips it, and truncate-loads stop times, stops, and trips into BigQuery |
+ 
+### Google Cloud Storage
+ 
+Intermediate store for raw GTFS Realtime JSON snapshots polled every 30 seconds. Files are loaded into BigQuery in bulk by the daily Realtime Load DAG.
+ 
+### dbt models
+ 
+| Layer | Model | Description |
+|---|---|---|
+| Staging | `stg_vehicle_positions` | Cleans realtime vehicle position data from `raw.rtdump` |
+| Staging | `stg_stop_times` | Cleans bus stop time data |
+| Staging | `stg_stop_times_mrtfeeder` | Cleans MRT feeder stop time data |
+| Staging | `stg_stops` | Cleans bus stop reference data |
+| Staging | `stg_stops_mrtfeeder` | Cleans MRT feeder stop reference data |
+| Intermediate | `int_stop_times` | Unions bus and mrtfeeder stop times |
+| Intermediate | `int_stops` | Unions bus and mrtfeeder stops |
+| Intermediate | `int_stop_times_with_coordinates` | Joins stop times with stop coordinates |
+| Intermediate | `int_max_stop_sequence` | Derives the last stop sequence per trip from realtime data |
+| Mart | `mart_punctuality` | Final punctuality metrics joining realtime and static schedule data |
 
-## Reports
+## Reporting Dashboard - Looker Studio
 
-| Report | Metric | Requirement | Data sources | Transform complexity |
-|---|---|---|---|---|
-| 1 - Stop-level punctuality | Avg minutes late at stops by hour | Temporal distribution | realtime positions + stop_times.txt | Hard - spatial + temporal join |
-| 2 - Ghost bus detection | Ghost vs completed trips by route | Categorical distribution | trips.txt + calendar.txt + realtime feed | Simple - presence check on trip_id |
+The reporting dashboard can be found here: 
 
-## Layer descriptions
-
-**Google Cloud Storage** - raw landing zone. Static GTFS files land as CSVs, realtime snapshots land as parquet batched in 5-minute windows. Partitioned by date.
-
-**BigQuery raw** - external tables pointing at GCS. No transformation, no data movement.
-
-**dbt staging** - rename columns to snake_case, cast types, filter out the ~2% of rapid-bus-kl trips flagged as problematic in the API docs.
-
-**dbt intermediate** - two models:
-- `int_stop_punctuality`: for each vehicle, find the first timestamp within 100m of each stop (from realtime position snapshots joined to stops.txt coordinates), then compare against scheduled arrival in stop_times.txt by trip_id and stop_sequence
-- `int_ghost_trips`: left join scheduled trip_ids (trips.txt filtered by calendar.txt) against trip_ids seen in the realtime feed during each trip's scheduled window
-
-**dbt mart** - pre-aggregated tables optimised for Looker Studio, partitioned by date and clustered by route.
-
-**Looker Studio** - connects directly to BigQuery mart tables. Global period filter (today / this week / this month) drives both reports simultaneously.
+**Looker Studio** connects directly to BigQuery mart tables. Global period filter (today / this week / this month) drives both reports simultaneously.
 
 ## Known limitations
-
-- Realtime historical data only available from poller start date. Prior period uses synthetic data generated from the static schedule with injected noise.
-- ~2% of rapid-bus-kl trips removed from stop_times.txt by the API provider due to data quality issues. Filtered at the staging layer.
-- GTFS realtime feed provides vehicle positions only - trip updates and service alerts not yet available for this operator.
-- Stop-level punctuality relies on spatial proximity matching which may introduce noise due to occasional erroneous GPS readings flagged in the API docs.
-
 
 # How to reproduce
 
@@ -119,7 +171,26 @@ then clone the github repo
 git clone https://github.com/nicolenair/kl-bus-reliability-tracker
 ```
 
-2. fill in .env file
+2. Configure .dbt/profiles.yml
+```
+klbus:
+  outputs:
+    dev:
+      dataset: <your bq dataset>
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+      keyfile: /kl-bus-reliability-tracker-25984de72887.json
+      location: US
+      method: service-account
+      priority: interactive
+      project: <your bq project>
+      threads: 1
+      type: bigquery
+  target: dev
+```
+3. Copy contents of your service account json to `security/<your file>`
+
+4. fill in .env file
 ```
 cd kl-bus-reliability-tracker/airflow-dbt
 echo -e "AIRFLOW_UID=$(id -u)" > .env
@@ -135,10 +206,10 @@ CONN_ID=
 ENV_FILE=
 DBT_PROJECT_DIR=
 DBT_PROFILES_DIR=
-DBT_KEYFILE_PATH=
+DBT_KEYFILE_PATH=<pass the path to the service account json>
 ```
 
-3. set up docker images & start airflow
+5. set up docker images & start airflow
 ```
 gcloud auth configure-docker us-central1-docker.pkg.dev
 sudo usermod -aG docker $USER
@@ -148,18 +219,37 @@ cd dbt_project && docker build -t dbt-custom:latest .
 cd ../ && docker-compose down && docker-compose up -d
 ```
 
-4. setup google cloud connection in airflow
+6. setup google cloud connection in airflow
 
 - open up airflow at localhost:8080, then go to Admin > Connections and click "add connection". 
 - under extra fields > keyfile JSON, paste in the contents of your service account JSON.
 
 
-5. turn on dags in airflow UI (localhost:8080)
+7. turn on dags in airflow UI (localhost:8080)
 - turn on realtime_poll dag, static_load dag, and static_load_feeder dag
 - once static_load and static_load_feeder have run at least once, turn on realtime_load_daily_table dag
 
-6. once the dags are running, the mart_punctuality table that is used in the Looker Studio dashboard will start to populate, and you can start to visualize the data using the preferred charts. documented below are the details of the charts used in the dashboard:
+8. once the dags are running, the mart_punctuality table that is used in the Looker Studio dashboard will start to populate, and you can start to visualize the data using the preferred charts. documented below are the details of the charts used in the dashboard:
 
+- Number of Trips
+    - chart type: scorecard
+    - aggregation: count distinct
+    - field: trip_id
+- Average Delay (Minutes)
+    - chart type: scorecard
+    - aggregation: average
+    - field: datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE)
 - Average Delay by Time of Day
-    - Bar Chart
-    - x-axis: 
+    - chart type: Bar Chart
+    - x-axis: FORMAT_DATETIME("%I %p", planned_arrival_time)
+    - y-axis: datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE)
+- Bus Routes with the Longest Average Delays
+    - chart type: Bar Chart
+    - x-axis: datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE)
+    - y-axis: route_id
+- Geographical Distribution of Bus Delays
+    - chart type: google maps (heatmap)
+    - location: CONCAT(stop_lat, ',', stop_lon)
+    - weight: datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE) 
+    
+
