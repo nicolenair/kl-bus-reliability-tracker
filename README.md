@@ -14,6 +14,14 @@ The target audience of this dashboard is the ops team at RapidKL (Malaysia's pri
 
 The reporting dashboard can be found here: https://lookerstudio.google.com/reporting/c4bbf74b-ddae-4187-9ee7-1d25f541bc03
 
+# Data Sources
+
+The two data sources are:
+- [GTFS Realtime API Endpoint](https://developer.data.gov.my/realtime-api/gtfs-realtime#gtfs-realtime-api-endpoint)
+    - Bus coordinate data that is updated every 30 seconds.
+    - Note this is **NOT** actually real-time bus updates, as the bus positions are only updated in the API every 30 seconds. I will use the term realtime in reference to this API, but this is a **batch processing** project.
+- [GTFS Static API Endpoint](https://developer.data.gov.my/realtime-api/gtfs-static)
+
 # Architecture
 
 ## Stack
