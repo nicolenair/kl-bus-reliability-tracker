@@ -8,7 +8,7 @@ The resulting punctuality dashboard can be filtered by date range and bus route 
 
 The target audience of this dashboard is the ops team at RapidKL (Malaysia's primary bus service) to analyse patterns in bus lateness, and improve service, as well as to use it for planning & reorganizing routes.
 
-**IMPORTANT NOTE: the bus coordinate data collection was from 23rd March 2026 to 30th March 2026, so please restrict your date filters to these dates if testing the Looker Studio dashboard**
+**IMPORTANT NOTE: the bus coordinate data collection started from 23rd March 2026 onwards, so please restrict your date filters to after this date if testing the Looker Studio dashboard. Note that I may tear down the VM where I am running the 30-second coordinates ingestion dag sometime this month for cost reasons, but anything between 23 March 2026 and 30 March 2026 should be permanently analyzable in the dashboard**
 
 ![](imgs/dashboard.png)
 
