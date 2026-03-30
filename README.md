@@ -25,66 +25,74 @@ The reporting dashboard can be found here: https://lookerstudio.google.com/repor
  
 ```mermaid
 flowchart TD
-  subgraph src["External sources"]
-    A["GTFS Realtime API\nrapid-kl bus + mrtfeeder"]
-    B["Static GTFS zip\nstop_times, stops, trips"]
-  end
- 
-  subgraph af["Airflow"]
-    D1["Polling DAG\nevery 30 s"]
-    D2["Realtime Load DAG\ndaily"]
-    D3["Static Load DAG\ndaily"]
-  end
- 
-  GCS[("GCS\nraw JSON snapshots")]
- 
-  subgraph bq["BigQuery + dbt"]
-    direction TB
-    RAW["raw.rtdump"]
- 
-    subgraph static_raw["Static raw tables"]
-      SR1["raw.stop_times\nraw.stop_times_mrtfeeder"]
-      SR2["raw.stops\nraw.stops_mrtfeeder"]
+
+    %% ========================
+    %% External Sources (top row)
+    %% ========================
+    subgraph Sources["GTFS APIs"]
+        A[GTFS Realtime API<br/>data.gov.my]
+        F[GTFS Static API (ZIP)<br/>data.gov.my]
     end
- 
-    subgraph stg["Staging"]
-      S1["stg_vehicle_positions"]
-      S2["stg_stop_times\nstg_stop_times_mrtfeeder"]
-      S3["stg_stops\nstg_stops_mrtfeeder"]
+
+    %% ========================
+    %% VM Layer
+    %% ========================
+    subgraph VM["GCP VM"]
+
+        subgraph Airflow["Airflow (DAGs)"]
+            B[Polling DAG<br/>(every 30s)]
+            D[Realtime Load DAG (Daily)]
+            G[Static Load DAGs (Daily)]
+        end
+
+        subgraph DBT["dbt (Transformations)"]
+            I[staging]
+            I2[intermediate]
+            I3[mart]
+        end
+
     end
- 
-    subgraph int["Intermediate"]
-      I1["int_stop_times"]
-      I2["int_stops"]
-      I3["int_stop_times_with_coordinates"]
-      I4["int_max_stop_sequence"]
+
+    %% ========================
+    %% Storage Layer
+    %% ========================
+    B -->|Save JSON| C[GCS Bucket<br/>JSON Data (30s precision)]
+
+    C --> D
+    D -->|Append| E[BigQuery<br/>Realtime Raw Table]
+
+    G -->|Unzip + Truncate Load| H[BigQuery<br/>Static Tables]
+
+    %% ========================
+    %% Transformations
+    %% ========================
+    E --> I
+    H --> I
+    I --> I2 --> I3
+
+    I3 --> J[BigQuery<br/>mart_punctuality]
+
+    %% ========================
+    %% BI Layer
+    %% ========================
+    J --> K[Looker Studio Dashboard]
+
+    %% ========================
+    %% Arrows from Sources
+    %% ========================
+    A --> B
+    F --> G
+
+    %% ========================
+    %% Infra
+    %% ========================
+    subgraph Infra["Provisioned via Terraform"]
+        C
+        E
+        H
+        J
+        VM
     end
- 
-    MART(["mart_punctuality"])
-  end
- 
-  A --> D1
-  A --> D2
-  B --> D3
- 
-  D1 --> GCS
-  GCS --> D2
-  D2 --> RAW
-  D3 --> SR1
-  D3 --> SR2
- 
-  RAW --> S1
-  SR1 --> S2
-  SR2 --> S3
- 
-  S2 --> I1
-  S3 --> I2
-  I1 --> I3
-  I2 --> I3
-  S1 --> I4
- 
-  I3 --> MART
-  I4 --> MART
 ```
  
 ### Airflow DAGs
