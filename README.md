@@ -30,8 +30,8 @@ flowchart TD
     %% External Sources (top row)
     %% ========================
     subgraph Sources["GTFS APIs"]
-        A[GTFS Realtime API\ndata.gov.my]
-        F[GTFS Static API (ZIP)\ndata.gov.my]
+        A[GTFS Realtime API\n data.gov.my]
+        F[GTFS Static API - ZIP\n data.gov.my]
     end
 
     %% ========================
@@ -40,9 +40,9 @@ flowchart TD
     subgraph VM["GCP VM"]
 
         subgraph Airflow["Airflow (DAGs)"]
-            B[Polling DAG\nevery 30s]
-            D[Realtime Load DAG (Daily)]
-            G[Static Load DAGs (Daily)]
+            B[Polling DAG\n every 30s]
+            D[Realtime Load DAG - Daily]
+            G[Static Load DAGs - Daily]
         end
 
         subgraph DBT["dbt (Transformations)"]
@@ -56,12 +56,12 @@ flowchart TD
     %% ========================
     %% Storage Layer
     %% ========================
-    B -->|Save JSON| C[GCS Bucket\nJSON Data (30s precision)]
+    B -->|Save JSON| C[GCS Bucket\n JSON Data (30s precision)]
 
     C --> D
-    D -->|Append| E[BigQuery\nRealtime Raw Table]
+    D -->|Append| E[BigQuery\n Realtime Raw Table]
 
-    G -->|Unzip + Truncate Load| H[BigQuery\nStatic Tables]
+    G -->|Unzip + Truncate Load| H[BigQuery\n Static Tables]
 
     %% ========================
     %% Transformations
@@ -70,7 +70,7 @@ flowchart TD
     H --> I
     I --> I2 --> I3
 
-    I3 --> J[BigQuery\nmart_punctuality]
+    I3 --> J[BigQuery\n mart_punctuality]
 
     %% ========================
     %% BI Layer
