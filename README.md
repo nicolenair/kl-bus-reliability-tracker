@@ -2,7 +2,7 @@
 
 # Overview
 
-This project ingests bus coordinates data (30 second precision) and bus route & schedule data (updated daily) of Rapid KL buses and MRT feeder buses in Kuala Lumpur. The data is loaded, transformed, and then used to produce a punctuality mart and dashboard.
+This project ingests bus coordinates data (30 second precision) and bus route & schedule data (updated daily) of Rapid KL buses and MRT feeder buses in Kuala Lumpur. The data is extracted, loaded, and transformed, and then used to produce a punctuality mart and dashboard.
 
 The resulting punctuality dashboard can be filtered by date range and bus route id.
 
