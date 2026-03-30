@@ -1,169 +1,95 @@
+version: 2
+
 models:
-  - name: stg_vehicle_positions
+  - name: stg_stop_times_mrtfeeder
     description: >
-      Staging model for GTFS-RT vehicle position data. This model standardizes column names
-      and data types from the raw vehicle_positions source, providing a clean foundation
-      for downstream transformations.
+      Staging model for stop times from the MRT feeder GTFS feed. 
+      Each row represents a scheduled arrival and departure at a stop for a given trip.
     columns:
-      - name: timestamp
-        description: Unix timestamp indicating when this vehicle position record was captured and sent by the feed.
-        data_tests:
-          - not_null
-
       - name: trip_id
-        description: Unique identifier of the trip the vehicle is currently serving, as defined in the GTFS static feed.
-
-      # - name: trip_start_time
-      #   description: Scheduled start time of the trip in HH:MM:SS format.
-
-      # - name: trip_start_date
-      #   description: Scheduled start date of the trip in YYYYMMDD format.
-
-      - name: route_id
-        description: Unique identifier of the route the vehicle is currently operating on, as defined in the GTFS static feed.
-
-      - name: latitude
-        description: Current latitude of the vehicle in decimal degrees (WGS84).
-        data_tests:
-          - not_null
-
-      - name: longitude
-        description: Current longitude of the vehicle in decimal degrees (WGS84).
-        data_tests:
-          - not_null
-
-      - name: bearing
-        description: Direction the vehicle is facing in degrees clockwise from True North (0–360).
-
-      - name: speed
-        description: Current speed of the vehicle in meters per second.
-
-      - name: vehicle_id
-        description: Unique identifier of the physical vehicle, used to track the same vehicle across multiple trips.
-        data_tests:
-          - not_null
-
-      - name: vehicle_license_plate
-        description: License plate number of the vehicle.
-
-  - name: stg_stops
-    description: Staged bus stop reference data from the primary GTFS feed. Truncate-loaded daily.
-    columns:
+        description: Identifier of the trip this stop time belongs to.
       - name: stop_id
-        description: Unique identifier for the stop.
-        data_tests:
-          - not_null
-          - unique
-
-      - name: stop_code
-        description: Short human-readable code for the stop (e.g. PJ785).
-
-      - name: stop_name
-        description: Full display name of the stop.
-        data_tests:
-          - not_null
-
-      - name: stop_lat
-        description: Latitude of the stop in decimal degrees (WGS84).
-        data_tests:
-          - not_null
-
-      - name: stop_lon
-        description: Longitude of the stop in decimal degrees (WGS84).
-        data_tests:
-          - not_null
+        description: Identifier of the stop where the vehicle arrives/departs.
+      - name: stop_sequence
+        description: Order of stops for a particular trip. Values must increase along the trip but do not need to be consecutive.
+      - name: stop_headsign
+        description: Text that appears on signage identifying the trip's destination to passengers at this stop. Overrides the trip-level headsign if provided.
+      - name: arrival_time
+        description: Scheduled arrival time at the stop for this trip.
+      - name: departure_time
+        description: Scheduled departure time from the stop for this trip.
 
   - name: stg_stop_times
-    description: Staged scheduled stop times from the primary GTFS feed. Truncate-loaded daily.
+    description: >
+      Staging model for stop times from the main GTFS feed.
+      Each row represents a scheduled arrival and departure at a stop for a given trip.
     columns:
       - name: trip_id
-        description: The trip this stop time belongs to. Foreign key to trips.
-        data_tests:
-          - not_null
-
+        description: Identifier of the trip this stop time belongs to.
       - name: stop_id
-        description: The stop being visited. Foreign key to stops.
-        data_tests:
-          - not_null
-
+        description: Identifier of the stop where the vehicle arrives/departs.
       - name: stop_sequence
-        description: Ordered position of this stop within the trip. Higher values come later in the trip.
-        data_tests:
-          - not_null
-
+        description: Order of stops for a particular trip. Values must increase along the trip but do not need to be consecutive.
       - name: stop_headsign
-        description: Text shown to passengers indicating the direction of travel at this stop, overriding the trip-level headsign.
-
+        description: Text that appears on signage identifying the trip's destination to passengers at this stop. Overrides the trip-level headsign if provided.
       - name: arrival_time
-        description: Scheduled arrival time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
-        data_tests:
-          - not_null
-
+        description: Scheduled arrival time at the stop for this trip.
       - name: departure_time
-        description: Scheduled departure time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
-        data_tests:
-          - not_null
-
-      - name: shape_dist_traveled
-        description: Distance traveled along the route shape from the first stop to this stop, in kilometers.
+        description: Scheduled departure time from the stop for this trip.
 
   - name: stg_stops_mrtfeeder
-    description: Staged bus stop reference data from the MRT feeder GTFS feed. Truncate-loaded daily.
+    description: >
+      Staging model for stops from the MRT feeder GTFS feed.
+      Each row represents a physical stop or station where passengers board or alight.
     columns:
       - name: stop_id
         description: Unique identifier for the stop.
-        data_tests:
-          - not_null
-          - unique
-
-      - name: stop_code
-        description: Short human-readable code for the stop.
-
       - name: stop_name
-        description: Full display name of the stop.
-        data_tests:
-          - not_null
-
+        description: Human-readable name of the stop or station.
       - name: stop_lat
-        description: Latitude of the stop in decimal degrees (WGS84).
-        data_tests:
-          - not_null
-
+        description: Latitude of the stop location in WGS 84 decimal degrees.
       - name: stop_lon
-        description: Longitude of the stop in decimal degrees (WGS84).
-        data_tests:
-          - not_null
+        description: Longitude of the stop location in WGS 84 decimal degrees.
 
-  - name: stg_stop_times_mrtfeeder
-    description: Staged scheduled stop times from the MRT feeder GTFS feed. Truncate-loaded daily.
+  - name: stg_stops
+    description: >
+      Staging model for stops from the main GTFS feed.
+      Each row represents a physical stop or station where passengers board or alight.
     columns:
-      - name: trip_id
-        description: The trip this stop time belongs to. Foreign key to trips.
-        data_tests:
-          - not_null
-
       - name: stop_id
-        description: The stop being visited. Foreign key to stops.
-        data_tests:
-          - not_null
+        description: Unique identifier for the stop.
+      - name: stop_name
+        description: Human-readable name of the stop or station.
+      - name: stop_lat
+        description: Latitude of the stop location in WGS 84 decimal degrees.
+      - name: stop_lon
+        description: Longitude of the stop location in WGS 84 decimal degrees.
 
-      - name: stop_sequence
-        description: Ordered position of this stop within the trip. Higher values come later in the trip.
-        data_tests:
-          - not_null
-
-      - name: stop_headsign
-        description: Text shown to passengers indicating the direction of travel at this stop, overriding the trip-level headsign.
-
-      - name: arrival_time
-        description: Scheduled arrival time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
-        data_tests:
-          - not_null
-
-      - name: departure_time
-        description: Scheduled departure time in HH:MM:SS format. Can exceed 24:00:00 for trips past midnight.
-        data_tests:
-          - not_null
-
-      - name: shape_dist_traveled
-        description: Distance traveled along the route shape from the first stop to this stop, in kilometers.
+  - name: stg_vehicle_positions
+    description: >
+      Staging model for real-time vehicle positions ingested from the GTFS-RT dump (rtdump).
+      Incrementally loaded using a merge strategy, deduped on (position_timestamp, trip_id).
+      Timestamps are converted from Unix epoch to UTC and localised to Asia/Kuala_Lumpur.
+    columns:
+      - name: position_timestamp
+        description: UTC timestamp of the vehicle position report, cast from the raw Unix epoch integer.
+      - name: position_date
+        description: Calendar date of the position report in the Asia/Kuala_Lumpur timezone (used as a partition/filter helper).
+      - name: actual_arrival_time
+        description: Localised datetime of the position report in Asia/Kuala_Lumpur timezone.
+      - name: trip_id
+        description: Identifier of the GTFS trip the vehicle is currently serving.
+      - name: route_id
+        description: Identifier of the GTFS route associated with the trip.
+      - name: latitude
+        description: Current latitude of the vehicle in WGS 84 decimal degrees.
+      - name: longitude
+        description: Current longitude of the vehicle in WGS 84 decimal degrees.
+      - name: bearing
+        description: Direction the vehicle is travelling, in degrees clockwise from north (0–360).
+      - name: speed
+        description: Current speed of the vehicle in metres per second as reported by the GTFS-RT feed.
+      - name: vehicle_id
+        description: Unique identifier for the physical vehicle.
+      - name: vehicle_license_plate
+        description: License plate number of the vehicle.

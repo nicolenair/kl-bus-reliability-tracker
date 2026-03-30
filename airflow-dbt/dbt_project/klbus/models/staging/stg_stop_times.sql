@@ -9,5 +9,5 @@ select
     stop_sequence,
     stop_headsign,
     arrival_time,
-    departure_time,
+    departure_time
 from source

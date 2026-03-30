@@ -4,6 +4,8 @@
 
 This project tracks punctuality of Rapid KL buses and MRT feeder buses in Kuala Lumpur. It ingests GTFS Realtime data every 30 seconds, stores it in Google Cloud Storage, loads it daily into BigQuery, and transforms it with dbt to produce a punctuality mart.
 
+**IMPORTANT NOTE: the bus coordinate data collection was from 23rd March 2026 to 30th March 2026, so please restrict your date filters to these dates if testing the Looker Studio dashboard**
+
 ![](imgs/dashboard.png)
 
 The reporting dashboard can be found here: https://lookerstudio.google.com/reporting/c4bbf74b-ddae-4187-9ee7-1d25f541bc03
@@ -23,66 +25,81 @@ The reporting dashboard can be found here: https://lookerstudio.google.com/repor
  
 ```mermaid
 flowchart TD
+  TF["Terraform\nprovisions GCP infra"]
+
   subgraph src["External sources"]
     A["GTFS Realtime API\nrapid-kl bus + mrtfeeder"]
     B["Static GTFS zip\nstop_times, stops, trips"]
   end
- 
-  subgraph af["Airflow"]
-    D1["Polling DAG\nevery 30 s"]
-    D2["Realtime Load DAG\ndaily"]
-    D3["Static Load DAG\ndaily"]
+
+  subgraph gcp["Google Cloud Platform (provisioned by Terraform)"]
+    subgraph vm["GCE VM"]
+      subgraph dc["Docker Compose"]
+        D1["Polling DAG\nevery 30 s"]
+        D2["Realtime Load DAG\ndaily"]
+        D3["Static Load DAG\ndaily"]
+      end
+      DBT["dbt\nDocker container\nspun up by Airflow"]
+    end
+
+    GCS[("Cloud Storage\nraw JSON snapshots")]
+
+    subgraph bq["BigQuery dataset"]
+      RAW["raw.rtdump"]
+
+      subgraph static_raw["Static raw tables"]
+        SR1["raw.stop_times\nraw.stop_times_mrtfeeder"]
+        SR2["raw.stops\nraw.stops_mrtfeeder"]
+      end
+
+      subgraph stg["Staging"]
+        S1["stg_vehicle_positions"]
+        S2["stg_stop_times\nstg_stop_times_mrtfeeder"]
+        S3["stg_stops\nstg_stops_mrtfeeder"]
+      end
+
+      subgraph int["Intermediate"]
+        I1["int_stop_times"]
+        I2["int_stops"]
+        I3["int_stop_times_with_coordinates"]
+        I4["int_max_stop_sequence"]
+      end
+
+      MART(["mart_punctuality"])
+    end
   end
- 
-  GCS[("GCS\nraw JSON snapshots")]
- 
-  subgraph bq["BigQuery + dbt"]
-    direction TB
-    RAW["raw.rtdump"]
- 
-    subgraph static_raw["Static raw tables"]
-      SR1["raw.stop_times\nraw.stop_times_mrtfeeder"]
-      SR2["raw.stops\nraw.stops_mrtfeeder"]
-    end
- 
-    subgraph stg["Staging"]
-      S1["stg_vehicle_positions"]
-      S2["stg_stop_times\nstg_stop_times_mrtfeeder"]
-      S3["stg_stops\nstg_stops_mrtfeeder"]
-    end
- 
-    subgraph int["Intermediate"]
-      I1["int_stop_times"]
-      I2["int_stops"]
-      I3["int_stop_times_with_coordinates"]
-      I4["int_max_stop_sequence"]
-    end
- 
-    MART(["mart_punctuality"])
-  end
- 
+
+  LOOKER["Looker Studio\npunctuality dashboard"]
+
+  TF -. "provisions VM, bucket,\nBigQuery dataset" .-> gcp
+
   A --> D1
   A --> D2
   B --> D3
- 
+
   D1 --> GCS
   GCS --> D2
   D2 --> RAW
   D3 --> SR1
   D3 --> SR2
- 
+
+  D2 -- "triggers" --> DBT
+  DBT --> S1 & S2 & S3
+
   RAW --> S1
   SR1 --> S2
   SR2 --> S3
- 
+
   S2 --> I1
   S3 --> I2
   I1 --> I3
   I2 --> I3
   S1 --> I4
- 
+
   I3 --> MART
   I4 --> MART
+
+  MART --> LOOKER
 ```
  
 ### Airflow DAGs
@@ -112,7 +129,11 @@ Intermediate store for raw GTFS Realtime JSON snapshots polled every 30 seconds.
 | Intermediate | `int_max_stop_sequence` | Derives the last stop sequence per trip from realtime data |
 | Mart | `mart_punctuality` | Final punctuality metrics joining realtime and static schedule data |
 
-## Reporting Dashboard - Looker Studio
+
+### BigQuery table partitioning & clustering
+Note that for the purposes of query time optimization, the mart_punctuality table was partitioned by  `actual_arrival_time` (datetime) and clustered by `route_id` (categorical). The reason for this is that in the Looker Studio, we allow viewers to filter by dates, and route_id.
+
+### Reporting Dashboard - Looker Studio
 
 **Looker Studio** connects directly to BigQuery mart tables. Global period filter (today / this week / this month) drives both reports simultaneously.
 
@@ -259,3 +280,13 @@ cd ../ && docker-compose down && docker-compose up -d
     - weight: datetime_diff(actual_arrival_time, planned_arrival_time, MINUTE) 
     
 
+## NOTE: DBT docs
+If you want to take a look at the generated docs for the project, you can run the following in the dbt container locally or on the VM. If you run it on the VM be sure to map the relevant port to your local when you ssh so that you can view it in your browser.
+
+```
+cd airflow-dbt/dbt_project && docker build -t dbt-custom:latest .
+
+cd ../ && docker run -p 8081:8081 -it  -v ${PWD}/dbt_project:/dbt_project -v /Users/nicolenair/.dbt:/root/.dbt -v /Users/nicolenair/Projects/de-outer/security/kl-bus-reliability-tracker-25984de72887.json:/kl-bus-reliability-tracker-25984de72887.json --env-file .env dbt-custom
+
+dbt docs generate --project-dir /dbt_project/klbus --profiles-dir /root/.dbt && dbt docs serve --project-dir /dbt_project/klbus --profiles-dir /root/.dbt --host 0.0.0.0 --port 8081
+```

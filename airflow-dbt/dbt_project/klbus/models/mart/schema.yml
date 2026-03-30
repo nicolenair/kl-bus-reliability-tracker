@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: mart_punctuality
+    description: >
+      Mart model capturing the closest recorded vehicle position to each intermediate stop
+      for every trip, used to derive punctuality metrics. Built incrementally with a merge
+      strategy, partitioned by actual_arrival_time (day) and clustered by route_id.
+
+      Logic summary:
+        1. Expands vehicle positions by joining to stop times with coordinates, computing
+           planned arrival and departure datetimes from GTFS scheduled times (handles
+           post-midnight times where hour >= 24).
+        2. Finds the minimum geodesic distance between any recorded vehicle position and
+           each stop, per trip and date.
+        3. Retains only the position record that achieved that minimum distance (i.e. the
+           moment the vehicle was closest to the stop).
+        4. Filters out the first and last stops of each trip, and restricts to planned
+           arrivals between 04:00 and 23:00 to remove overnight/out-of-service edge cases.
+        5. Deduplicates on (position_timestamp, trip_id, stop_id).
+
+    columns:
+      - name: position_timestamp
+        description: >
+          UTC timestamp of the vehicle position record that was closest to the stop.
+          Part of the composite unique key.
+
+      - name: actual_arrival_time
+        description: >
+          Localised datetime (Asia/Kuala_Lumpur) of the closest vehicle position record.
+          Used as the partition field (day granularity).
+
+      - name: planned_arrival_time
+        description: >
+          Scheduled arrival datetime at the stop derived from the GTFS stop_times feed,
+          resolved to a full datetime by combining position_date with the scheduled time
+          string. Handles post-midnight times (hour >= 24) by subtracting one day from
+          the base date before adding the interval.
+
+      - name: planned_departure_time
+        description: >
+          Scheduled departure datetime from the stop, derived using the same post-midnight
+          resolution logic as planned_arrival_time.
+
+      - name: position_date
+        description: >
+          Calendar date of the vehicle position in Asia/Kuala_Lumpur timezone. Used as
+          the grouping key when computing minimum distances per trip/stop/day.
+
+      - name: route_id
+        description: GTFS route identifier associated with the trip. Used as the cluster key.
+
+      - name: trip_id
+        description: >
+          GTFS trip identifier. Part of the composite unique key and join key to stop times
+          and max stop sequence reference models.
+
+      - name: stop_id
+        description: >
+          GTFS stop identifier of the stop being evaluated. Part of the composite unique key.
+
+      - name: stop_sequence
+        description: >
+          Ordered position of the stop within the trip. First and last stops are excluded
+          from this model (terminus stops where punctuality measurement is not meaningful).
+
+      - name: longitude
+        description: Longitude of the vehicle at the closest recorded position, in WGS 84 decimal degrees.
+
+      - name: latitude
+        description: Latitude of the vehicle at the closest recorded position, in WGS 84 decimal degrees.
+
+      - name: stop_lon
+        description: Longitude of the stop in WGS 84 decimal degrees.
+
+      - name: stop_lat
+        description: Latitude of the stop in WGS 84 decimal degrees.
+
+      - name: min_distance
+        description: >
+          Geodesic distance in metres between the vehicle's closest recorded position and
+          the stop, computed using ST_DISTANCE on ST_GEOGPOINT geometries. Represents how
+          close the vehicle got to the stop across all position records for that trip/stop/day.

@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: int_max_stop_sequence
+    description: >
+      Intermediate model that computes the maximum stop sequence number for each trip,
+      derived from int_stop_times_with_coordinates. Used in mart_punctuality to identify
+      and exclude the last stop of each trip from punctuality calculations.
+    columns:
+      - name: trip_id
+        description: GTFS trip identifier.
+      - name: max_stop_sequence
+        description: >
+          The highest stop_sequence value for the trip, representing the terminal stop.
+
+  - name: int_stop_times_with_coordinates
+    description: >
+      Intermediate model that enriches stop times with the geographic coordinates and
+      name of each stop, by joining int_stop_times to int_stops on stop_id. Produces
+      one row per trip-stop combination with both schedule and location data.
+    columns:
+      - name: stop_id
+        description: GTFS stop identifier.
+      - name: stop_name
+        description: Human-readable name of the stop.
+      - name: stop_lat
+        description: Latitude of the stop in WGS 84 decimal degrees.
+      - name: stop_lon
+        description: Longitude of the stop in WGS 84 decimal degrees.
+      - name: arrival_time
+        description: Scheduled arrival time at the stop as a raw GTFS time string (may exceed 23:59:59 for post-midnight times).
+      - name: departure_time
+        description: Scheduled departure time from the stop as a raw GTFS time string (may exceed 23:59:59 for post-midnight times).
+      - name: trip_id
+        description: GTFS trip identifier.
+      - name: stop_sequence
+        description: Ordered position of the stop within the trip.
+
+  - name: int_stop_times
+    description: >
+      Intermediate model that consolidates stop times from the main GTFS feed and the
+      MRT feeder feed into a single unified table via UNION ALL. Serves as the single
+      source of stop time data for downstream intermediate and mart models.
+    columns:
+      - name: trip_id
+        description: GTFS trip identifier.
+      - name: stop_id
+        description: GTFS stop identifier.
+      - name: stop_sequence
+        description: Ordered position of the stop within the trip.
+      - name: stop_headsign
+        description: Destination signage text for this stop, overriding the trip-level headsign if present.
+      - name: arrival_time
+        description: Scheduled arrival time as a raw GTFS time string (may exceed 23:59:59 for post-midnight times).
+      - name: departure_time
+        description: Scheduled departure time as a raw GTFS time string (may exceed 23:59:59 for post-midnight times).
+
+  - name: int_stops
+    description: >
+      Intermediate model that consolidates stops from the main GTFS feed and the MRT
+      feeder feed into a single unified table via UNION ALL. Serves as the single source
+      of stop reference data for downstream intermediate and mart models.
+    columns:
+      - name: stop_id
+        description: GTFS stop identifier.
+      - name: stop_name
+        description: Human-readable name of the stop or station.
+      - name: stop_lat
+        description: Latitude of the stop in WGS 84 decimal degrees.
+      - name: stop_lon
+        description: Longitude of the stop in WGS 84 decimal degrees.
