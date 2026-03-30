@@ -25,81 +25,66 @@ The reporting dashboard can be found here: https://lookerstudio.google.com/repor
  
 ```mermaid
 flowchart TD
-  TF["Terraform\nprovisions GCP infra"]
-
   subgraph src["External sources"]
     A["GTFS Realtime API\nrapid-kl bus + mrtfeeder"]
     B["Static GTFS zip\nstop_times, stops, trips"]
   end
-
-  subgraph gcp["Google Cloud Platform (provisioned by Terraform)"]
-    subgraph vm["GCE VM"]
-      subgraph dc["Docker Compose"]
-        D1["Polling DAG\nevery 30 s"]
-        D2["Realtime Load DAG\ndaily"]
-        D3["Static Load DAG\ndaily"]
-      end
-      DBT["dbt\nDocker container\nspun up by Airflow"]
-    end
-
-    GCS[("Cloud Storage\nraw JSON snapshots")]
-
-    subgraph bq["BigQuery dataset"]
-      RAW["raw.rtdump"]
-
-      subgraph static_raw["Static raw tables"]
-        SR1["raw.stop_times\nraw.stop_times_mrtfeeder"]
-        SR2["raw.stops\nraw.stops_mrtfeeder"]
-      end
-
-      subgraph stg["Staging"]
-        S1["stg_vehicle_positions"]
-        S2["stg_stop_times\nstg_stop_times_mrtfeeder"]
-        S3["stg_stops\nstg_stops_mrtfeeder"]
-      end
-
-      subgraph int["Intermediate"]
-        I1["int_stop_times"]
-        I2["int_stops"]
-        I3["int_stop_times_with_coordinates"]
-        I4["int_max_stop_sequence"]
-      end
-
-      MART(["mart_punctuality"])
-    end
+ 
+  subgraph af["Airflow"]
+    D1["Polling DAG\nevery 30 s"]
+    D2["Realtime Load DAG\ndaily"]
+    D3["Static Load DAG\ndaily"]
   end
-
-  LOOKER["Looker Studio\npunctuality dashboard"]
-
-  TF -. "provisions VM, bucket,\nBigQuery dataset" .-> gcp
-
+ 
+  GCS[("GCS\nraw JSON snapshots")]
+ 
+  subgraph bq["BigQuery + dbt"]
+    direction TB
+    RAW["raw.rtdump"]
+ 
+    subgraph static_raw["Static raw tables"]
+      SR1["raw.stop_times\nraw.stop_times_mrtfeeder"]
+      SR2["raw.stops\nraw.stops_mrtfeeder"]
+    end
+ 
+    subgraph stg["Staging"]
+      S1["stg_vehicle_positions"]
+      S2["stg_stop_times\nstg_stop_times_mrtfeeder"]
+      S3["stg_stops\nstg_stops_mrtfeeder"]
+    end
+ 
+    subgraph int["Intermediate"]
+      I1["int_stop_times"]
+      I2["int_stops"]
+      I3["int_stop_times_with_coordinates"]
+      I4["int_max_stop_sequence"]
+    end
+ 
+    MART(["mart_punctuality"])
+  end
+ 
   A --> D1
   A --> D2
   B --> D3
-
+ 
   D1 --> GCS
   GCS --> D2
   D2 --> RAW
   D3 --> SR1
   D3 --> SR2
-
-  D2 -- "triggers" --> DBT
-  DBT --> S1 & S2 & S3
-
+ 
   RAW --> S1
   SR1 --> S2
   SR2 --> S3
-
+ 
   S2 --> I1
   S3 --> I2
   I1 --> I3
   I2 --> I3
   S1 --> I4
-
+ 
   I3 --> MART
   I4 --> MART
-
-  MART --> LOOKER
 ```
  
 ### Airflow DAGs
