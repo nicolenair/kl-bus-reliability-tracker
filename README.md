@@ -19,7 +19,7 @@ The reporting dashboard can be found here: https://lookerstudio.google.com/repor
 The two data sources are:
 - [GTFS Realtime API Endpoint](https://developer.data.gov.my/realtime-api/gtfs-realtime#gtfs-realtime-api-endpoint)
     - Bus coordinate data that is updated every 30 seconds.
-    - Note this is **NOT** actually real-time bus updates, as the bus positions are only updated in the API every 30 seconds. I will use the term realtime in reference to this API, as that is how it was named by its authors, but please keep this caveat in mind.
+    - Note this is **NOT** actually real-time bus updates, as the bus positions are only updated in the API every 30 seconds. I will use the term "realtime" in reference to this API, as that is how it was named by its authors, but please keep this caveat in mind.
 - [GTFS Static API Endpoint](https://developer.data.gov.my/realtime-api/gtfs-static)
 
 # Architecture
