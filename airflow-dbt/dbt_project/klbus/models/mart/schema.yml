@@ -16,7 +16,7 @@ models:
         3. Retains only the position record that achieved that minimum distance (i.e. the
            moment the vehicle was closest to the stop).
         4. Filters out the first and last stops of each trip, and restricts to planned
-           arrivals between 04:00 and 23:00 to remove overnight/out-of-service edge cases.
+           arrivals between 05:00 (inclusive) and 23:00 (exclusive) to remove overnight/out-of-service edge cases.
         5. Deduplicates on (position_timestamp, trip_id, stop_id).
 
     columns:
