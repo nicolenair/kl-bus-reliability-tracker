@@ -151,8 +151,7 @@ Note that for the purposes of query time optimization, the mart_punctuality tabl
 
 ### Reporting Dashboard - Looker Studio
 
-**Looker Studio** connects directly to BigQuery mart tables. Allows user to filter by date range and route_id. Produces five reports:
-- Number of Trips (scorecard)
+**Looker Studio** connects directly to BigQuery mart tables. Allows user to filter by date range and route_id. Produces four reports:
 - Average Delay (Minutes) (scorecard)
 - Average Delay by Time of Day (Bar Chart)
 - Bus Routes with the Longest Average Delays (Bar Chart)
@@ -285,10 +284,6 @@ cd ../ && docker-compose down && docker-compose up -d
 
 8. once the dags are running, the mart_punctuality table that is used in the Looker Studio dashboard will start to populate, and you can start to visualize the data using the preferred charts. documented below are the details of the charts used in the dashboard:
 
-- Number of Trips
-    - chart type: scorecard
-    - aggregation: count distinct
-    - field: trip_id
 - Average Delay (Minutes)
     - chart type: scorecard
     - aggregation: average
